@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SlashDw\TaggingKit\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 use SlashDw\TaggingKit\Contracts\ActorContextContract;
 use SlashDw\TaggingKit\Contracts\TagTypeContract;
 use SlashDw\TaggingKit\Contracts\TenantContextContract;
@@ -57,6 +58,7 @@ class Tag extends SpatieTag
         });
 
         static::creating(static function (Tag $tag): void {
+            $tag->assignPrimaryKey();
             $tag->assignTenantId();
             $tag->assignCreatedBy();
             $tag->syncTypeFromTagType();
@@ -83,6 +85,46 @@ class Tag extends SpatieTag
         }
 
         return $casts;
+    }
+
+    public function getKeyType(): string
+    {
+        return self::usesStringKey() ? 'string' : parent::getKeyType();
+    }
+
+    public function getIncrementing(): bool
+    {
+        return self::usesStringKey() ? false : parent::getIncrementing();
+    }
+
+    /**
+     * Whether the tags table PK is a string id (uuid/ulid) per config.
+     */
+    private static function usesStringKey(): bool
+    {
+        return in_array(config('tagging-kit.keys.tags'), ['uuid', 'ulid'], true);
+    }
+
+    /**
+     * Generate a uuid/ulid primary key on create when configured (the Spatie
+     * migration's `$table->id()` is replaced by the consumer with uuid/ulid).
+     */
+    private function assignPrimaryKey(): void
+    {
+        if (! self::usesStringKey()) {
+            return;
+        }
+
+        $keyName = $this->getKeyName();
+
+        if (! empty($this->getAttribute($keyName))) {
+            return;
+        }
+
+        $this->setAttribute(
+            $keyName,
+            config('tagging-kit.keys.tags') === 'ulid' ? (string) Str::ulid() : (string) Str::uuid()
+        );
     }
 
     private function assignTenantId(): void

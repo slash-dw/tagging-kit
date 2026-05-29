@@ -8,6 +8,16 @@ starting from `v0.1.0` (during `v0.0.x` development period breaking changes may 
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-05-29
+
+### Added
+- Config-driven primary key type for the Tag model (`keys.tags` = int/uuid/ulid):
+  `getKeyType()`/`getIncrementing()` adapt, and uuid/ulid ids are generated on
+  create. Consumers using UUID/ULID ecosystems no longer hit type mismatches
+  (e.g. ActivityLog UUID morph columns). The Spatie `create_tag_tables`
+  migration's `$table->id()` must be replaced by the consumer with uuid/ulid
+  accordingly.
+
 ## [0.0.2] - 2026-05-29
 
 ### Fixed
