@@ -17,6 +17,6 @@ class DefaultSharedTypesResolver implements SharedTypesResolverContract
 {
     public function expand(TagTypeContract $type): array
     {
-        return [$type->value()];
+        return [(int) $type->value];
     }
 }

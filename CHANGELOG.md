@@ -12,9 +12,21 @@ starting from `v0.1.0` (during `v0.0.x` development period breaking changes may 
 - Initial package scaffolding (Faz 0)
 - `composer.json`, `phpstan.neon.dist` (level 8, no baseline), `pint.json`, `phpunit.xml.dist`
 - MIT License
-- Public API contracts: `TagTypeContract`, `ActorContextContract`, `TenantContextContract`, `SharedTypesResolverContract`
-- `TaggingKitServiceProvider` scaffolding (auto-discover)
+- Public API contracts: `TagTypeContract` (extends `BackedEnum`), `ActorContextContract`, `TenantContextContract`, `SharedTypesResolverContract`
 - Config file `tagging-kit.php` with 14 flexibility points
 - 7 event classes for host side-effect injection
 - GitHub Actions CI workflow (`Pint`, `PHPStan`, `PHPUnit`)
 - Pull request template
+- **Tag model** (Faz 1A) — extends Spatie Tag with multi-tenant visibility global scope, tenant/actor auto-assignment, `tag_type` ↔ Spatie `type` slug sync observer, and `forTenant`/`systemOnly`/`ofTagTypes` scopes
+- **ALTER migration stub** — config-driven PK types (uuid/ulid/int), driver-aware indexes (pgsql GIN trigram / B-tree)
+- **`SuggestTagsQuery`** — driver-aware JSON locale LIKE, cross-domain shared type expansion, 5 sort strategies (use_count_desc/alphabetic/recent/mixed/custom)
+- **`Support\JsonLocaleQuery`** — driver-aware JSON column path + case-insensitive LIKE operator
+- **`Support\TagTypeResolver`** — int → host enum resolution
+- **Policies** (SRP split): `AbstractAdminTagPolicy` (class) + `AbstractUserTagPolicy` (trait)
+- **Controllers**: `SuggestTagController`, `DeleteUserTagController`, `ConfigController`
+- **Routes** — `GET /tagging/{config,suggest}`, `DELETE /tagging/tags/{tag}` (config-driven prefix/middleware/throttle)
+- Migration publish (`tagging-kit-migrations`) + route registration in service provider
+- 27 tests (feature + unit + contract guards), PHPStan level 8 clean
+
+### Changed
+- `TagTypeContract` now extends `BackedEnum` (removed `value()` method — use native `->value`) to avoid the reserved enum `value` member collision

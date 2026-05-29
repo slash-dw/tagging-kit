@@ -1,0 +1,138 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+/**
+ * Extends Spatie's `tags` table with kit columns:
+ *  - tag_type   SMALLINT  (authoritative int enum value)
+ *  - tenant_id  (nullable, config-driven PK type) — only when tenant.enabled
+ *  - created_by (nullable, config-driven PK type) — only when audit.track_created_by
+ *
+ * PK types and FK targets are config-driven (tagging-kit.keys.*, .tenant.*, .audit.*).
+ * Index strategy is DB-driver-aware (pgsql GIN trigram vs B-tree).
+ *
+ * Publish via: php artisan vendor:publish --tag="tagging-kit-migrations"
+ */
+return new class extends Migration
+{
+    public function up(): void
+    {
+        $tenantEnabled = config('tagging-kit.tenant.enabled') === true;
+        $trackCreatedBy = config('tagging-kit.audit.track_created_by') === true;
+
+        Schema::table('tags', function (Blueprint $table) use ($tenantEnabled, $trackCreatedBy): void {
+            $table->smallInteger('tag_type')->unsigned()->after('type');
+
+            if ($tenantEnabled) {
+                $this->addKeyColumn($table, 'tenant_id', config('tagging-kit.keys.tenant'), 'tag_type');
+            }
+
+            if ($trackCreatedBy) {
+                $after = $tenantEnabled ? 'tenant_id' : 'tag_type';
+                $this->addKeyColumn($table, 'created_by', config('tagging-kit.keys.actor'), $after);
+            }
+        });
+
+        $this->addForeignKeys($tenantEnabled, $trackCreatedBy);
+        $this->addIndexes();
+    }
+
+    public function down(): void
+    {
+        $tenantEnabled = config('tagging-kit.tenant.enabled') === true;
+        $trackCreatedBy = config('tagging-kit.audit.track_created_by') === true;
+
+        Schema::table('tags', function (Blueprint $table) use ($tenantEnabled, $trackCreatedBy): void {
+            if ($trackCreatedBy) {
+                $table->dropConstrainedForeignKey('created_by');
+            }
+
+            if ($tenantEnabled) {
+                $table->dropConstrainedForeignKey('tenant_id');
+            }
+        });
+
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            DB::statement('DROP INDEX IF EXISTS idx_tags_name_default_trgm');
+        }
+
+        Schema::table('tags', function (Blueprint $table) use ($tenantEnabled, $trackCreatedBy): void {
+            $columns = ['tag_type'];
+
+            if ($tenantEnabled) {
+                $columns[] = 'tenant_id';
+            }
+
+            if ($trackCreatedBy) {
+                $columns[] = 'created_by';
+            }
+
+            $table->dropColumn($columns);
+        });
+    }
+
+    private function addKeyColumn(Blueprint $table, string $name, mixed $keyType, string $after): void
+    {
+        match ($keyType) {
+            'uuid' => $table->uuid($name)->nullable()->after($after),
+            'ulid' => $table->ulid($name)->nullable()->after($after),
+            default => $table->unsignedBigInteger($name)->nullable()->after($after),
+        };
+    }
+
+    private function addForeignKeys(bool $tenantEnabled, bool $trackCreatedBy): void
+    {
+        Schema::table('tags', function (Blueprint $table) use ($tenantEnabled, $trackCreatedBy): void {
+            if ($tenantEnabled) {
+                $tenantTable = config('tagging-kit.tenant.foreign_table');
+                $tenantKey = config('tagging-kit.tenant.foreign_key');
+                $onDelete = config('tagging-kit.tenant.on_delete');
+
+                $fk = $table->foreign('tenant_id')->references($tenantKey)->on($tenantTable);
+                $this->applyOnDelete($fk, $onDelete);
+            }
+
+            if ($trackCreatedBy) {
+                $actorTable = config('tagging-kit.audit.actor_table');
+                $onDelete = config('tagging-kit.audit.on_actor_delete');
+
+                $fk = $table->foreign('created_by')->references('id')->on($actorTable);
+                $this->applyOnDelete($fk, $onDelete);
+            }
+        });
+    }
+
+    private function applyOnDelete(\Illuminate\Database\Schema\ForeignKeyDefinition $fk, mixed $onDelete): void
+    {
+        match ($onDelete) {
+            'cascade' => $fk->cascadeOnDelete(),
+            'restrict' => $fk->restrictOnDelete(),
+            default => $fk->nullOnDelete(),
+        };
+    }
+
+    private function addIndexes(): void
+    {
+        Schema::table('tags', function (Blueprint $table): void {
+            $table->index(['tag_type', 'tenant_id'], 'idx_tags_type_tenant');
+        });
+
+        // PostgreSQL trigram index for fuzzy name search (requires pg_trgm extension).
+        if (
+            DB::connection()->getDriverName() === 'pgsql'
+            && config('tagging-kit.database.use_trigram_index') === true
+        ) {
+            $defaultLocale = config('tagging-kit.locale.default', 'en');
+
+            DB::statement('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+            DB::statement(
+                "CREATE INDEX IF NOT EXISTS idx_tags_name_default_trgm ON tags USING GIN ((name->>'{$defaultLocale}') gin_trgm_ops)"
+            );
+        }
+    }
+};
