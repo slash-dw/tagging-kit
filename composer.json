@@ -1,0 +1,55 @@
+{
+  "name": "slash-dw/tagging-kit",
+  "description": "SlashDw shared tagging infrastructure for Laravel projects (Spatie laravel-tags based, multi-tenant + multi-locale + config-driven)",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "php": "^8.5",
+    "illuminate/contracts": "^13.0",
+    "illuminate/database": "^13.0",
+    "illuminate/http": "^13.0",
+    "illuminate/support": "^13.0",
+    "spatie/laravel-tags": "^4.0",
+    "slash-dw/core-kit": "^0.0.4",
+    "slash-dw/idempotency-kit": "^0.0.2"
+  },
+  "require-dev": {
+    "larastan/larastan": "^3.9",
+    "laravel/pint": "^1.29",
+    "orchestra/testbench": "^11.0",
+    "phpunit/phpunit": "^12.0"
+  },
+  "scripts": {
+    "lint": "@php vendor/bin/pint --test",
+    "format": "@php vendor/bin/pint",
+    "analyse": "@php vendor/bin/phpstan analyse -c phpstan.neon.dist --memory-limit=1G",
+    "test": "@php vendor/bin/phpunit -c phpunit.xml.dist",
+    "ci": [
+      "@lint",
+      "@analyse",
+      "@test"
+    ]
+  },
+  "autoload": {
+    "psr-4": {
+      "SlashDw\\TaggingKit\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "SlashDw\\TaggingKit\\Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "SlashDw\\TaggingKit\\TaggingKitServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "config": {
+    "sort-packages": true
+  }
+}
