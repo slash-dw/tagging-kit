@@ -8,6 +8,15 @@ starting from `v0.1.0` (during `v0.0.x` development period breaking changes may 
 
 ## [Unreleased]
 
+### Added
+- **Frontend package `@slash-dw/tagging-ui`** (`js/`, monorepo) — React/TypeScript
+  companion at npm version `0.0.1`. Headless `<TagAutocomplete>` + `TagChip` +
+  `TagSuggestionItem`; hooks `useTagAutocomplete` (debounce + Fuse.js local-first
+  + LRU cache + AbortController), `useTaggingBootstrap` (GET /tagging/config),
+  `useDeleteUserTag`; 3-layer config store (`configureTaggingUi`); low-level API
+  (`suggestTags`/`deleteUserTag`/`fetchTaggingConfig`). 11 Vitest tests, Vite
+  library build (ESM + CJS + d.ts). Not yet published to npm (pending org).
+
 ## [0.0.3] - 2026-05-29
 
 ### Added

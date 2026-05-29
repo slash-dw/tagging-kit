@@ -10,7 +10,9 @@
 
 🚧 **Active development — `v0.0.x`**. Public API may change between minor versions. SemVer applies from `v0.1.0`.
 
-Companion frontend package: [`@slash-dw/tagging-ui`](https://github.com/slash-dw/tagging-ui) (NPM, React/TypeScript) — provides `<TagAutocomplete>` and hooks.
+This is a **monorepo**: the PHP backend lives at the root (Packagist:
+`slash-dw/tagging-kit`) and the React frontend in [`js/`](js/) (npm:
+`@slash-dw/tagging-ui`). See [Frontend](#frontend--slash-dwtagging-ui) below.
 
 ## Installation
 
@@ -26,12 +28,77 @@ php artisan vendor:publish --tag="tagging-kit-config"
 ## Documentation
 
 Detailed documentation is in progress. For now, see:
-- [`src/Config/tagging-kit.php`](src/Config/tagging-kit.php) — all configuration options with inline comments
+- [`config/tagging-kit.php`](config/tagging-kit.php) — all configuration options with inline comments
 - [`src/Contracts/`](src/Contracts/) — public API interfaces (`TagTypeContract`, `ActorContextContract`, `TenantContextContract`, `SharedTypesResolverContract`)
 
 Full README will be published with `v0.1.0` (Faz 6).
 
-## Development
+## Frontend — @slash-dw/tagging-ui
+
+React/TypeScript companion in [`js/`](js/), published to npm as
+`@slash-dw/tagging-ui`. Headless `<TagAutocomplete>` + hooks (debounce,
+Fuse.js local-first, LRU cache, AbortController). Styling is host-owned via
+`data-tagging-*` attributes + `className`.
+
+### Install
+
+```bash
+npm install @slash-dw/tagging-ui
+npm install react @tanstack/react-query   # peer deps
+```
+
+### Bootstrap (once, at app entry)
+
+```tsx
+import { configureTaggingUi, useTaggingBootstrap } from '@slash-dw/tagging-ui';
+
+// Optional host overrides (win over backend /tagging/config defaults).
+configureTaggingUi({
+  baseUrl: '/api',                  // → {base}/tagging/{suggest,config,tags/:id}
+  fetch: myCsrfAwareFetch,          // optional auth-aware fetch wrapper
+  i18n: { placeholder: 'Etiket ekle…' },
+  hooks: { onUserTagDeleted: (t) => analytics.track('tag_deleted', t) },
+});
+
+function TaggingBootstrap() {
+  useTaggingBootstrap();            // GET /api/tagging/config → internal store
+  return null;
+}
+```
+
+### Use the component
+
+```tsx
+import { TagAutocomplete, type Tag } from '@slash-dw/tagging-ui';
+
+function Form() {
+  const [tags, setTags] = useState<Tag[]>([]);
+  return <TagAutocomplete tagType={100} value={tags} onChange={setTags} />;
+}
+```
+
+### Public API
+
+| Kind | Exports |
+|---|---|
+| Components | `TagAutocomplete`, `TagChip`, `TagSuggestionItem` |
+| Hooks | `useTagAutocomplete`, `useTaggingBootstrap`, `useDeleteUserTag` |
+| Config | `configureTaggingUi`, `getTaggingConfig` |
+| Low-level API | `suggestTags`, `deleteUserTag`, `fetchTaggingConfig` |
+| Types | `Tag`, `TagAutocompleteProps`, `TaggingConfig`, `TaggingDefaults`, … |
+
+**Config precedence** (low → high): hardcoded → backend `/tagging/config` →
+`configureTaggingUi` → per-component prop.
+
+### Develop the frontend
+
+```bash
+cd js
+npm install
+npm run ci        # typecheck + vitest + vite build (ESM + CJS + d.ts)
+```
+
+## Development (backend)
 
 ```bash
 composer install
