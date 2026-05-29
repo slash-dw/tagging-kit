@@ -8,6 +8,13 @@ starting from `v0.1.0` (during `v0.0.x` development period breaking changes may 
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-05-29
+
+### Fixed
+- Migration `down()` uses `dropForeign(['col'])` instead of `dropConstrainedForeignKey('col')` — the latter is not recognized by Larastan stubs in consumer projects (PHPStan level 8 false-positive). Runtime behavior identical.
+
+## [0.0.1] - 2026-05-29
+
 ### Added
 - Initial package scaffolding (Faz 0)
 - `composer.json`, `phpstan.neon.dist` (level 8, no baseline), `pint.json`, `phpunit.xml.dist`
